@@ -1,4 +1,4 @@
-FROM ghcr.io/ggml-org/llama.cpp:server-cuda
+FROM ghcr.io/ggml-org/llama.cpp:full-cuda
 
 WORKDIR /
 
@@ -9,16 +9,17 @@ RUN apt-get update \
 # Work around broken/missing shared-library symlinks in some upstream llama.cpp images.
 # Ensures both libfoo.so and libfoo.so.<major> point to the versioned .so file.
 RUN set -eux; \
-    if [ -d /app/lib ]; then \
-        for f in /app/lib/*.so.[0-9]*; do \
+    for d in /app/lib /app/build/lib /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu; do \
+        [ -d "$d" ] || continue; \
+        for f in "$d"/*.so.[0-9]*; do \
             [ -e "$f" ] || continue; \
             base="$(basename "$f")"; \
             stem="${base%%.so.*}.so"; \
             major="$(printf '%s' "$base" | sed -E 's/^.*\.so\.([0-9]+).*$/\1/')"; \
-            ln -sf "$base" "/app/lib/${stem}"; \
-            ln -sf "$base" "/app/lib/${stem}.${major}"; \
+            ln -sf "$base" "$d/${stem}"; \
+            ln -sf "$base" "$d/${stem}.${major}"; \
         done; \
-    fi
+    done
 
 COPY requirements.txt /requirements.txt
 RUN pip3 install --no-cache-dir -r /requirements.txt
@@ -26,7 +27,7 @@ RUN pip3 install --no-cache-dir -r /requirements.txt
 COPY handler.py /handler.py
 
 ENV PYTHONUNBUFFERED=1
-ENV LD_LIBRARY_PATH=/app/lib:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/app/lib:/app/build/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:/usr/lib:${LD_LIBRARY_PATH}
 ENV LLAMA_SERVER_BIN=/app/llama-server
 ENV LLAMA_SERVER_HOST=127.0.0.1
 ENV LLAMA_SERVER_PORT=8080
