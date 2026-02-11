@@ -12,7 +12,13 @@ RUN pip3 install --no-cache-dir -r /requirements.txt
 COPY handler.py /handler.py
 
 ENV PYTHONUNBUFFERED=1
-ENV LD_LIBRARY_PATH=/app/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:/usr/lib:${LD_LIBRARY_PATH}
+
+# Discover every directory under /app that contains shared libraries
+# and register them with the dynamic linker so llama-server can find
+# libmtmd, libllama, libggml, etc. regardless of where the base image
+# places them.
+RUN find /app -name "*.so*" -exec dirname {} \; | sort -u \
+      > /etc/ld.so.conf.d/llama.conf && ldconfig
 ENV LLAMA_SERVER_BIN=/app/llama-server
 ENV LLAMA_SERVER_HOST=127.0.0.1
 ENV LLAMA_SERVER_PORT=8080
