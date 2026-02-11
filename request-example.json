@@ -1,0 +1,7 @@
+{
+  "input": {
+    "prompt": "Explain why GGUF is used with llama.cpp in 3 bullet points.",
+    "temperature": 0.2,
+    "max_tokens": 200
+  }
+}

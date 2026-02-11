@@ -1,0 +1,12 @@
+{
+  "name": "llama-cpp-huihui-flash",
+  "templateId": "<YOUR_TEMPLATE_ID>",
+  "gpuTypeIds": ["NVIDIA RTX A5000"],
+  "gpuCount": 1,
+  "workersMin": 0,
+  "workersMax": 2,
+  "idleTimeout": 5,
+  "scalerType": "QUEUE_DELAY",
+  "scalerValue": 4,
+  "executionTimeoutMs": 600000
+}
