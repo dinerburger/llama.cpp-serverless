@@ -82,7 +82,10 @@ def _wait_for_server_ready() -> None:
 
     while time.time() < deadline:
         if _server_process is not None and _server_process.poll() is not None:
-            raise RuntimeError("llama-server exited before becoming ready")
+            output = _server_process.stdout.read().decode(errors="replace")[-2000:]
+            raise RuntimeError(
+                f"llama-server exited with code {_server_process.returncode}: {output}"
+            )
 
         try:
             response = requests.get(health_url, timeout=10)
@@ -105,7 +108,9 @@ def _ensure_server_running() -> None:
         return
 
     command = _build_server_command()
-    _server_process = subprocess.Popen(command)
+    _server_process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
     _wait_for_server_ready()
 
 

@@ -1,4 +1,4 @@
-FROM ghcr.io/ggml-org/llama.cpp:full-cuda
+FROM ghcr.io/ggml-org/llama.cpp:server-cuda
 
 WORKDIR /
 
@@ -12,7 +12,7 @@ RUN pip3 install --no-cache-dir -r /requirements.txt
 COPY handler.py /handler.py
 
 ENV PYTHONUNBUFFERED=1
-ENV LD_LIBRARY_PATH=/app/lib:/app/build/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:/usr/lib:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/app/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:/usr/lib:${LD_LIBRARY_PATH}
 ENV LLAMA_SERVER_BIN=/app/llama-server
 ENV LLAMA_SERVER_HOST=127.0.0.1
 ENV LLAMA_SERVER_PORT=8080
