@@ -13,9 +13,10 @@ RUN set -eux; \
         [ -d "$d" ] || continue; \
         for f in "$d"/*.so.[0-9]*; do \
             [ -e "$f" ] || continue; \
-            base="$(basename "$f")"; \
+            base="${f##*/}"; \
             stem="${base%%.so.*}.so"; \
-            major="$(printf '%s' "$base" | sed -E 's/^.*\.so\.([0-9]+).*$/\1/')"; \
+            major="${base#*.so.}"; \
+            major="${major%%.*}"; \
             ln -sf "$base" "$d/${stem}"; \
             ln -sf "$base" "$d/${stem}.${major}"; \
         done; \
