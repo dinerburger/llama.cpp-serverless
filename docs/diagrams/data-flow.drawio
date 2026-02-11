@@ -1,0 +1,190 @@
+<mxGraphModel>
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- Title -->
+    <mxCell id="title" value="Request / Response Data Flow" style="text;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="150" y="10" width="500" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 1: Client -->
+    <mxCell id="s1" value="1. Client sends&#xa;POST /runsync" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="40" y="60" width="130" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 2: RunPod Gateway -->
+    <mxCell id="s2" value="2. RunPod routes&#xa;job to worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="210" y="60" width="130" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 3: handler() -->
+    <mxCell id="s3" value="3. handler(job)&#xa;entry point" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="380" y="60" width="130" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Decision: server running? -->
+    <mxCell id="d1" value="Server&#xa;running?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="555" y="50" width="90" height="75" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 4a: Start server -->
+    <mxCell id="s4a" value="4a. Start llama-server&#xa;subprocess &amp; wait&#xa;for /health OK" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="680" y="50" width="130" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 5: Build payload -->
+    <mxCell id="s5" value="5. Build payload&#xa;(OpenAI chat format)&#xa;messages, model,&#xa;temperature, etc." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="40" y="180" width="150" height="65" as="geometry"/>
+    </mxCell>
+
+    <!-- Decision: custom payload? -->
+    <mxCell id="d2" value="Custom&#xa;payload?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="235" y="182" width="85" height="60" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 5a: Use provided payload as-is -->
+    <mxCell id="s5a" value="5a. Use provided&#xa;payload as-is" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="235" y="270" width="120" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 5b: Build default chat payload -->
+    <mxCell id="s5b" value="5b. Build default&#xa;chat payload from&#xa;prompt/messages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="370" y="180" width="130" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 6: POST to llama-server -->
+    <mxCell id="s6" value="6. POST to&#xa;localhost:8080&#xa;/v1/chat/completions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="540" y="180" width="140" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 7: llama-server inference -->
+    <mxCell id="s7" value="7. llama-server&#xa;runs inference&#xa;on GPU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="710" y="180" width="110" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 8: Wrap response -->
+    <mxCell id="s8" value="8. Wrap response&#xa;{status_code, ok,&#xa; endpoint, result}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="540" y="280" width="140" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Step 9: Return to RunPod -->
+    <mxCell id="s9" value="9. RunPod delivers&#xa;response to client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="350" y="280" width="140" height="45" as="geometry"/>
+    </mxCell>
+
+    <!-- Error path -->
+    <mxCell id="err" value="Error?&#xa;Return error +&#xa;refresh_worker flag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="710" y="280" width="115" height="50" as="geometry"/>
+    </mxCell>
+
+    <!-- Arrows -->
+    <mxCell id="a1" style="endArrow=classic;strokeColor=#666666;" edge="1" source="s1" target="s2" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a2" style="endArrow=classic;strokeColor=#9673a6;" edge="1" source="s2" target="s3" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a3" style="endArrow=classic;strokeColor=#6c8ebf;" edge="1" source="s3" target="d1" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Decision: No -> start server -->
+    <mxCell id="a4" style="endArrow=classic;strokeColor=#82b366;" edge="1" source="d1" target="s4a" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a4-label" value="No" style="edgeLabel;html=1;fontSize=9;fontColor=#d6b656;fontStyle=1;" vertex="1" connectable="0" parent="a4">
+      <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+    </mxCell>
+
+    <!-- Decision: Yes -> build payload (down) -->
+    <mxCell id="a5" style="edgeStyle=orthogonalEdgeStyle;curved=1;endArrow=classic;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" edge="1" source="d1" target="s5" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="600" y="155"/>
+          <mxPoint x="115" y="155"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="a5-label" value="Yes" style="edgeLabel;html=1;fontSize=9;fontColor=#d6b656;fontStyle=1;" vertex="1" connectable="0" parent="a5">
+      <mxGeometry x="-0.8" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+    </mxCell>
+
+    <!-- Start server -> build payload -->
+    <mxCell id="a6" style="edgeStyle=orthogonalEdgeStyle;curved=1;endArrow=classic;strokeColor=#82b366;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" edge="1" source="s4a" target="s5" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="745" y="155"/>
+          <mxPoint x="190" y="155"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- build payload -> decision custom -->
+    <mxCell id="a7" style="endArrow=classic;strokeColor=#6c8ebf;" edge="1" source="s5" target="d2" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- custom? yes -> use as-is -->
+    <mxCell id="a8" style="endArrow=classic;strokeColor=#6c8ebf;" edge="1" source="d2" target="s5a" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a8-label" value="Yes" style="edgeLabel;html=1;fontSize=9;fontColor=#d6b656;fontStyle=1;" vertex="1" connectable="0" parent="a8">
+      <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+    </mxCell>
+
+    <!-- custom? no -> build default -->
+    <mxCell id="a9" style="endArrow=classic;strokeColor=#6c8ebf;" edge="1" source="d2" target="s5b" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a9-label" value="No" style="edgeLabel;html=1;fontSize=9;fontColor=#d6b656;fontStyle=1;" vertex="1" connectable="0" parent="a9">
+      <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+    </mxCell>
+
+    <!-- both paths -> POST llama -->
+    <mxCell id="a10" style="edgeStyle=orthogonalEdgeStyle;curved=1;endArrow=classic;strokeColor=#82b366;" edge="1" source="s5b" target="s6" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a10b" style="edgeStyle=orthogonalEdgeStyle;curved=1;endArrow=classic;strokeColor=#82b366;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="s5a" target="s6" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="610" y="290"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- POST -> inference -->
+    <mxCell id="a11" style="endArrow=classic;strokeColor=#82b366;" edge="1" source="s6" target="s7" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- inference -> wrap -->
+    <mxCell id="a12" style="endArrow=classic;strokeColor=#82b366;" edge="1" source="s7" target="s8" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- wrap -> return -->
+    <mxCell id="a13" style="endArrow=classic;strokeColor=#9673a6;" edge="1" source="s8" target="s9" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- error path -->
+    <mxCell id="a14" style="endArrow=classic;strokeColor=#b85450;dashed=1;" edge="1" source="s7" target="err" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="a14-label" value="error" style="edgeLabel;html=1;fontSize=9;fontColor=#b85450;" vertex="1" connectable="0" parent="a14">
+      <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+    </mxCell>
+
+    <!-- error -> return (with error) -->
+    <mxCell id="a15" style="edgeStyle=orthogonalEdgeStyle;curved=1;endArrow=classic;strokeColor=#b85450;dashed=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" edge="1" source="err" target="s9" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="710" y="345"/>
+          <mxPoint x="490" y="345"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

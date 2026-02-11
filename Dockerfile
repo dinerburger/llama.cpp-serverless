@@ -25,4 +25,8 @@ ENV LLAMA_DISABLE_WEBUI=1
 # Override with MODEL_PATH or MODEL_HF_REPO/MODEL_HF_FILE as needed.
 ENV MODEL_HF_REPO=DevQuasar/huihui-ai.Huihui-GLM-4.7-Flash-abliterated-GGUF
 
+# The base image sets an entrypoint dispatcher that only recognises
+# llama.cpp sub-commands (--server, --run, etc.).  Reset it so the
+# container executes our Python handler directly.
+ENTRYPOINT []
 CMD ["python3", "-u", "/handler.py"]
