@@ -1,13 +1,25 @@
+import asyncio
 import atexit
+import logging
+import multiprocessing
 import os
 import subprocess
+import sys
 import time
+import traceback
 from typing import Any, Dict, List
 
-import requests
+import aiohttp
 import runpod
+from runpod import RunPodLogger
 
+from engine import LlamaCppEngine
+from utils import JobInput
 
+log = RunPodLogger()
+logger = logging.getLogger(__name__)
+
+# Configuration
 LLAMA_SERVER_BIN = os.getenv("LLAMA_SERVER_BIN", "/app/llama-server")
 LLAMA_SERVER_HOST = os.getenv("LLAMA_SERVER_HOST", "127.0.0.1")
 LLAMA_SERVER_PORT = int(os.getenv("LLAMA_SERVER_PORT", "8080"))
@@ -16,7 +28,9 @@ LLAMA_SERVER_URL = f"http://{LLAMA_SERVER_HOST}:{LLAMA_SERVER_PORT}"
 SERVER_START_TIMEOUT_SECONDS = int(os.getenv("SERVER_START_TIMEOUT_SECONDS", "900"))
 SERVER_REQUEST_TIMEOUT_SECONDS = int(os.getenv("SERVER_REQUEST_TIMEOUT_SECONDS", "600"))
 
-_server_process = None
+# Global state
+_server_process: subprocess.Popen = None
+_engine: LlamaCppEngine | None = None
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -34,7 +48,7 @@ def _build_server_command() -> List[str]:
         "--port",
         str(LLAMA_SERVER_PORT),
         "--ctx-size",
-        os.getenv("LLAMA_CTX_SIZE", "8192"),
+        os.getenv("LLAMA_CTX_SIZE", "0"),
         "--n-gpu-layers",
         os.getenv("LLAMA_N_GPU_LAYERS", "999"),
         "--threads-http",
@@ -62,16 +76,12 @@ def _build_server_command() -> List[str]:
         )
 
     # Multimodal projector (mmproj) support for vision models
-    # Note: When using --hf-repo, mmproj is auto-downloaded if available in the repo.
-    # Use these options to override or when mmproj isn't auto-detected.
     mmproj_path = os.getenv("MMPROJ_PATH", "").strip()
     mmproj_url = os.getenv("MMPROJ_URL", "").strip()
 
     if mmproj_path:
-        # Use local mmproj file
         cmd.extend(["--mmproj", mmproj_path])
     elif mmproj_url:
-        # Download mmproj from direct URL (e.g., HF resolve URL)
         cmd.extend(["--mmproj-url", mmproj_url])
 
     alias = os.getenv("MODEL_ALIAS", "huihui-glm-4.7-flash-abliterated").strip()
@@ -101,10 +111,11 @@ def _wait_for_server_ready() -> None:
             )
 
         try:
+            import requests
             response = requests.get(health_url, timeout=10)
             if response.ok:
                 return
-        except requests.RequestException:
+        except Exception:
             pass
 
         time.sleep(2)
@@ -124,7 +135,6 @@ def _ensure_server_running() -> None:
     _server_process = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
-    _wait_for_server_ready()
 
 
 def _stop_server() -> None:
@@ -143,97 +153,55 @@ def _stop_server() -> None:
     _server_process = None
 
 
-def _build_default_chat_payload(job_input: Dict[str, Any]) -> Dict[str, Any]:
-    messages = job_input.get("messages")
-    if messages is None:
-        prompt = job_input.get("prompt", "Hello")
-        messages = [{"role": "user", "content": prompt}]
-
-    payload: Dict[str, Any] = {
-        "model": job_input.get("model", os.getenv("MODEL_ALIAS", "huihui-glm-4.7-flash-abliterated")),
-        "messages": messages,
-        "stream": False,
-    }
-
-    optional_keys = [
-        "temperature",
-        "top_p",
-        "top_k",
-        "max_tokens",
-        "presence_penalty",
-        "frequency_penalty",
-        "stop",
-        "response_format",
-        "tools",
-        "tool_choice",
-    ]
-
-    for key in optional_keys:
-        if key in job_input:
-            payload[key] = job_input[key]
-
-    if "params" in job_input and isinstance(job_input["params"], dict):
-        payload.update(job_input["params"])
-
-    return payload
-
-
-def handler(job: Dict[str, Any]) -> Dict[str, Any]:
+async def handler(job: Dict[str, Any]):
+    """Async handler for RunPod serverless."""
     try:
+        log.info(f"Received job: {job}")
+        job_input = JobInput(job)
+        log.info(f"JobInput: route={job_input.openai_route}, stream={job_input.stream}")
+        
+        async for batch in _engine.generate(job_input):
+            batch_preview = str(batch)[:200] if batch else 'empty'
+            log.info(f"Yielding batch: {batch_preview}")
+            yield batch
+    except Exception as e:
+        error_str = str(e)
+        full_traceback = traceback.format_exc()
+
+        log.error(f"Error during inference: {error_str}")
+        log.error(f"Full traceback:\n{full_traceback}")
+
+        # CUDA errors = worker is broken, exit to let RunPod spin up a healthy one
+        if "CUDA" in error_str or "cuda" in error_str:
+            log.error("Terminating worker due to CUDA/GPU error")
+            sys.exit(1)
+
+        yield {"error": error_str}
+
+
+# Only run in main process to prevent re-initialization
+if __name__ == "__main__" or multiprocessing.current_process().name == "MainProcess":
+    import asyncio
+
+    try:
+        # Initialize the engine
+        _engine = LlamaCppEngine()
+        log.info("LlamaCppEngine initialized successfully")
+
+        # Ensure server is running
         _ensure_server_running()
-    except Exception as exc:
-        return {
-            "error": f"Failed to initialize llama-server: {exc}",
-            "refresh_worker": True,
+        _wait_for_server_ready()
+
+    except Exception as e:
+        log.error(f"Worker startup failed: {e}\n{traceback.format_exc()}")
+        sys.exit(1)
+
+    runpod.serverless.start(
+        {
+            "handler": handler,
+            "return_aggregate_stream": True,
         }
-
-    job_input = job.get("input", {})
-    endpoint = job_input.get("endpoint", "/v1/chat/completions")
-    payload = job_input.get("payload")
-
-    if payload is None:
-        payload = _build_default_chat_payload(job_input)
-
-    url = f"{LLAMA_SERVER_URL}{endpoint}"
-
-    headers = {"Content-Type": "application/json"}
-    api_key = os.getenv("LLAMA_API_KEY", "").strip()
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-
-    try:
-        response = requests.post(
-            url,
-            json=payload,
-            headers=headers,
-            timeout=SERVER_REQUEST_TIMEOUT_SECONDS,
-        )
-
-        content_type = response.headers.get("content-type", "")
-        if "application/json" in content_type.lower():
-            body = response.json()
-        else:
-            body = {"raw": response.text}
-
-        result = {
-            "status_code": response.status_code,
-            "ok": response.ok,
-            "endpoint": endpoint,
-            "result": body,
-        }
-
-        if not response.ok:
-            result["refresh_worker"] = False
-
-        return result
-    except Exception as exc:
-        return {
-            "error": f"Inference request failed: {exc}",
-            "refresh_worker": False,
-        }
+    )
 
 
 atexit.register(_stop_server)
-
-if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
