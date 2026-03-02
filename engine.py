@@ -1,11 +1,10 @@
-import json
 import logging
 import os
 from typing import Any, AsyncGenerator, Dict
 
 import aiohttp
 
-from utils import BatchSize, DummyRequest, JobInput, create_error_response
+from utils import DummyRequest, JobInput, create_error_response
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,10 +18,6 @@ class LlamaCppEngine:
         self.port = int(os.getenv("LLAMA_SERVER_PORT", "8080"))
         self.base_url = f"http://{self.host}:{self.port}"
         self.api_key = os.getenv("LLAMA_API_KEY", "").strip()
-        
-        self.default_batch_size = int(os.getenv("DEFAULT_BATCH_SIZE", "50"))
-        self.batch_size_growth_factor = float(os.getenv("BATCH_SIZE_GROWTH_FACTOR", "3"))
-        self.min_batch_size = int(os.getenv("MIN_BATCH_SIZE", "1"))
         
         self._session: aiohttp.ClientSession = None
     
@@ -90,11 +85,6 @@ class LlamaCppEngine:
         url = f"{self.base_url}{endpoint}"
         
         stream = job_input.stream
-        batch_size = BatchSize(
-            job_input.max_batch_size or self.default_batch_size,
-            job_input.min_batch_size or self.min_batch_size,
-            job_input.batch_size_growth_factor or self.batch_size_growth_factor
-        )
         
         logger.info(f"Making request to {url} with payload: {job_input.openai_input}")
         
@@ -116,27 +106,21 @@ class LlamaCppEngine:
                     return
                 
                 if stream:
-                    # Streaming response - pass through SSE chunks
-                    batch = []
-                    batch_token_counter = 0
-                    
-                    async for line in response.content.iter_lines():
-                        line_str = line.decode('utf-8')
-                        logger.debug(f"Received SSE line: {line_str}")
-                        if line_str.strip():
-                            batch.append(line_str)
-                            batch_token_counter += 1
-                            
-                            if batch_token_counter >= batch_size.current_batch_size:
-                                yield "\n".join(batch)
-                                batch = []
-                                batch_token_counter = 0
-                                batch_size.update()
-                    
-                    # Yield remaining chunks
-                    if batch:
-                        logger.info(f"Yielding final batch with {len(batch)} chunks")
-                        yield "\n".join(batch)
+                    # Streaming response - buffer chunks and split by newlines
+                    buffer = ""
+                    async for chunk in response.content.iter_any():
+                        buffer += chunk.decode('utf-8')
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            line_str = line.strip()
+                            logger.debug(f"Received SSE line: {line_str}")
+                            if line_str:
+                                yield line_str
+                    # Handle any remaining data in buffer
+                    if buffer.strip():
+                        line_str = buffer.strip()
+                        logger.debug(f"Received SSE line (final): {line_str}")
+                        yield line_str
                 else:
                     # Non-streaming response - return JSON directly
                     result = await response.json()
