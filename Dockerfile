@@ -1,4 +1,4 @@
-FROM ghcr.io/ggml-org/llama.cpp:server-cuda AS aptdeps
+FROM ghcr.io/ggml-org/llama.cpp:server-cuda12-b8191 AS aptdeps
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip ca-certificates curl \
