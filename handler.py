@@ -156,13 +156,13 @@ def _stop_server() -> None:
 async def handler(job: Dict[str, Any]):
     """Async handler for RunPod serverless."""
     try:
-        log.info(f"Received job: {job}")
+        # log.info(f"Received job: {job}")
         job_input = JobInput(job)
-        log.info(f"JobInput: route={job_input.openai_route}, stream={job_input.stream}")
+        # log.info(f"JobInput: route={job_input.openai_route}, stream={job_input.stream}")
         
         async for batch in _engine.generate(job_input):
             batch_preview = str(batch)[:200] if batch else 'empty'
-            log.info(f"Yielding batch: {batch_preview}")
+            # log.info(f"Yielding batch: {batch_preview}")
             yield batch
     except Exception as e:
         error_str = str(e)
