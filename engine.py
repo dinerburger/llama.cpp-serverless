@@ -74,7 +74,7 @@ class LlamaCppEngine:
         """Handle chat completion requests with streaming support."""
         client = self._get_client()
         
-        logger.info(f"Making chat request with payload: {job_input.openai_input}")
+        # logger.debug(f"Making chat request with payload: {job_input.openai_input}")
         
         try:
             # Create the chat completion request
@@ -91,7 +91,7 @@ class LlamaCppEngine:
                 async for chunk in stream:
                     # Convert the chunk to a dict and format as SSE
                     chunk_dict = chunk.model_dump()
-                    logger.debug(f"Received chunk: {chunk_dict}")
+                    # logger.debug(f"Received chunk: {chunk_dict}")
                     # Format as SSE: "data: {...}\n\n"
                     sse_line = f"data: {json.dumps(chunk_dict)}\n\n"
                     yield sse_line
@@ -111,7 +111,7 @@ class LlamaCppEngine:
         """Handle legacy completion requests with streaming support."""
         client = self._get_client()
         
-        logger.info(f"Making completion request with payload: {job_input.openai_input}")
+        # logger.debug(f"Making completion request with payload: {job_input.openai_input}")
         
         try:
             completion_kwargs = {k: v for k, v in job_input.openai_input.items()}
@@ -122,7 +122,7 @@ class LlamaCppEngine:
                 stream = await client.completions.create(**completion_kwargs, stream=True)
                 async for chunk in stream:
                     chunk_dict = chunk.model_dump()
-                    logger.debug(f"Received chunk: {chunk_dict}")
+                    # logger.debug(f"Received chunk: {chunk_dict}")
                     # Format as SSE: "data: {...}\n\n"
                     sse_line = f"data: {json.dumps(chunk_dict)}\n\n"
                     yield sse_line
